@@ -3197,12 +3197,20 @@ async def http_chat(request: Request) -> dict[str, Any]:
 @app.get("/debug/public-files")
 async def debug_public_files():
     """Debug: show loaded public files and path resolution."""
+    # List actual files on disk for debugging
+    dirs_checked = {}
+    for p in ["/var/task", "/var/task/src", "/var/task/src/public", "/var/task/public"]:
+        try:
+            dirs_checked[p] = [f.name for f in Path(p).iterdir()][:20] if Path(p).exists() else "NOT_FOUND"
+        except Exception as e:
+            dirs_checked[p] = str(e)
     return {
         "public_dir": str(_public_dir),
         "public_dir_exists": _public_dir.exists() if _public_dir else False,
         "loaded_files": {k: len(v) for k, v in _PUBLIC_FILES.items()},
         "cwd": str(Path.cwd()),
         "file": str(Path(__file__).resolve()),
+        "dirs_checked": dirs_checked,
     }
 
 
