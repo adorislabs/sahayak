@@ -271,7 +271,13 @@ if _static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
 # Mount public directory for HTML files (ambiguity maps, report, etc.)
-_public_dir = Path(__file__).parent.parent.parent / "public"
+_public_dir = Path(__file__).resolve().parent.parent.parent.parent / "public"
+if not _public_dir.exists():
+    # Vercel places files relative to project root
+    _public_dir = Path(os.getcwd()) / "public"
+if not _public_dir.exists():
+    _public_dir = Path("/var/task/public")
+logger.info("Public dir resolved to: %s (exists=%s)", _public_dir, _public_dir.exists())
 if _public_dir.exists():
     # Create a custom mount that handles both static files and the root "/" case
     try:
@@ -300,8 +306,7 @@ async def _on_shutdown() -> None:
 # Inline HTML — warm, citizen-friendly, bilingual
 # ---------------------------------------------------------------------------
 
-_CHAT_HTML = r"""\
-<!DOCTYPE html>
+_CHAT_HTML = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">

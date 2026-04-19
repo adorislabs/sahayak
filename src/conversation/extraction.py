@@ -624,6 +624,14 @@ async def extract_fields(
         used_fallback = True
         raw = _extract_fields_regex(normalised_message, existing_profile)
 
+    # If LLM returned but extracted nothing, supplement with regex
+    if not used_fallback and raw and not raw.get("extractions"):
+        regex_raw = _extract_fields_regex(normalised_message, existing_profile)
+        if regex_raw.get("extractions"):
+            logger.info("LLM returned empty extractions — supplementing with regex fallback")
+            raw = regex_raw
+            used_fallback = True
+
     # Parse LLM/regex response into ExtractedField objects
     extractions: list[ExtractedField] = []
     reasoning_chain: list[ExtractionReasoning] = []
@@ -731,17 +739,21 @@ _OCCUPATION_MAP: dict[str, str] = {
 
 
 def _parse_number_indian(text: str) -> float | None:
-    """Parse Indian number formats: 1.5 lakh, 2 crore, 15,000, 15000."""
+    """Parse Indian number formats: 1.5 lakh, 2 crore, 15,000, 15000, 1L."""
     text = text.replace(",", "").strip()
     m = re.search(
-        r"([\d.]+)\s*(lakh|lac|crore|cr|thousand|k)?",
+        r"([\d.]+)\s*(lakh|lac|crore|cr|thousand|k|l)\b",
         text, re.IGNORECASE
     )
     if not m:
-        return None
+        # Try bare number
+        m = re.search(r"([\d.]+)", text)
+        if not m:
+            return None
+        return float(m.group(1))
     num = float(m.group(1))
     unit = (m.group(2) or "").lower()
-    if unit in ("lakh", "lac"):
+    if unit in ("lakh", "lac", "l"):
         num *= 100_000
     elif unit in ("crore", "cr"):
         num *= 10_000_000
@@ -898,13 +910,19 @@ def _extract_fields_regex(
     if not monthly_m and not annual_m:
         bare_m = re.search(
             r"(?:earn(?:ing)?|income|salary|maalik|kamai|kamate|kamata|आमदनी|कमाई|तनख्वाह)\s+(?:of\s+|is\s+|h\b|hai\b)?\s*"
-            r"([\d.,]+\s*(?:lakh|lac|crore|cr|k|thousand)?)",
+            r"([\d.,]+\s*(?:lakh|lac|crore|cr|k|l|thousand)?)",
             text, re.IGNORECASE
         )
         if not bare_m:
             # "1 lac kamate h saal mai" → income comes before verb
             bare_m = re.search(
-                r"([\d.,]+\s*(?:lakh|lac|crore|cr|k)?)\s+(?:kamate|kamata|kamai|earn)",
+                r"([\d.,]+\s*(?:lakh|lac|crore|cr|k|l)?)\s+(?:kamate|kamata|kamai|earn)",
+                text, re.IGNORECASE
+            )
+        if not bare_m:
+            # "1L saal ka" / "1l ka" — bare amount with lakh shorthand
+            bare_m = re.search(
+                r"\b([\d.,]+\s*(?:lakh|lac|l|crore|cr|k))\b",
                 text, re.IGNORECASE
             )
         if bare_m:
