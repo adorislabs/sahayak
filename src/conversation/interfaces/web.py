@@ -2615,6 +2615,8 @@ _CHAT_HTML = r"""\
     }
 
     /* ── WebSocket / HTTP ───────────────────────────────────────────────── */
+    let httpOnly = false;  // Once true, never attempt WebSocket again
+    let httpStarted = false;  // Prevent duplicate startHTTP calls
     function handleResponse(data) {
         const tid = turnCount++;
         hideTyping();
@@ -2691,6 +2693,7 @@ _CHAT_HTML = r"""\
     }
 
     function connectWebSocket() {
+        if (httpOnly) return;  // Already switched to HTTP — don't retry WS
         const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
         ws = new WebSocket(`${proto}//${location.host}/ws/chat`);
         ws.onopen = () => {
@@ -2716,16 +2719,17 @@ _CHAT_HTML = r"""\
                 console.error('WS parse error', err);
             }
         };
-        ws.onerror = () => { setStatus(false); ws = null; startHTTP(); };
+        ws.onerror = () => {
+            setStatus(false);
+            ws = null;
+            httpOnly = true;  // WS not available — switch to HTTP permanently
+            if (!httpStarted) { httpStarted = true; startHTTP(); }
+        };
         ws.onclose  = () => {
             ws = null;
             setStatus(false);
-            setTimeout(() => {
-                if (!ws) {
-                    try { connectWebSocket(); }
-                    catch { startHTTP(); }
-                }
-            }, 3000);
+            // Don't reconnect if we've already switched to HTTP mode
+            if (httpOnly) return;
         };
     }
 
