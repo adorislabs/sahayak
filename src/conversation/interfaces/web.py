@@ -2752,7 +2752,7 @@ _CHAT_HTML = r"""<!DOCTYPE html>
         const isMatchingMsg = _isMatchingHint(text);
         showTyping(isMatchingMsg);
         // Guard: if session token is too large, trim it to prevent 413
-        if (sessionToken.length > 500000) {
+        if (sessionToken.length > 2000000) {
             sessionToken = '';
             localStorage.removeItem('cbc_session_token');
             addMessage('Session was getting too large — starting fresh context. Your results are still visible above.', 'system');

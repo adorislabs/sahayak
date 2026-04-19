@@ -255,8 +255,32 @@ class ConversationSession:
     # Serialisation — client-side encrypted token
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _slim_result(result: dict[str, Any] | None) -> dict[str, Any] | None:
+        """Strip heavy fields from matching result to keep token small.
+        
+        Keeps scheme names and statuses (for post-results chat LLM context)
+        but drops rule_evaluations, confidence_breakdown, gap_analysis, etc.
+        Full results are already sent to the client via turn_audit.
+        """
+        if not result:
+            return result
+        slim_schemes = []
+        for s in result.get("scheme_results", []):
+            slim_schemes.append({
+                "scheme_id": s.get("scheme_id"),
+                "name": s.get("name"),
+                "status": s.get("status"),
+            })
+        return {"scheme_results": slim_schemes}
+
     def _to_dict(self) -> dict[str, Any]:
-        """Convert session to a JSON-serialisable dict."""
+        """Convert session to a JSON-serialisable dict.
+        
+        Strips heavy fields (matching results, what-if) to keep token small.
+        These are already sent to the client via turn_audit and can be
+        re-computed from profile_data if needed.
+        """
         return {
             "v": 1,  # schema version
             "sid": self.session_id,
@@ -268,8 +292,8 @@ class ConversationSession:
             "fp": self.field_provenance,
             "ts": self.turns,
             "tc": self.turn_count,
-            "lr": self.latest_result,
-            "wir": self.what_if_results,
+            "lr": self._slim_result(self.latest_result),
+            "wir": None,  # stripped — what-if results re-computed if needed
             "dl": self.detected_language,
             "af": self.asked_fields,
             "sf": self.skipped_fields,
