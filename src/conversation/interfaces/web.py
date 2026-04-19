@@ -2100,21 +2100,16 @@ _CHAT_HTML = r"""\
     /* ── Chat message rendering ─────────────────────────────────────────── */
     function renderMd(text) {
         if (!text) return '';
-        // Escape HTML
+        // Escape HTML first
         let s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        // Bold: **text**
-        s = s.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');
-        // Italic: *text* (single star) — simple version without lookbehind
-        s = s.replace(/\\*([^*]+)\\*/g, (m, txt) => txt.includes('*') ? m : '<em>' + txt + '</em>');
-        // Bullet lines starting with •, -, or two-space indent + digit+dot
-        s = s.replace(/^[ \\t]*[•\\-]\\s+(.+)$/gm, '<li>$1</li>');
-        s = s.replace(/^[ \\t]*\\d+\\.\\s+(.+)$/gm, '<li class="num">$1</li>');
-        // Wrap consecutive <li> items
-        s = s.replace(/(<li[^>]*>.*?<\\/li>)+/g, m => '<ul>' + m + '</ul>');
+        // Simple bold: **text**
+        s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        // Simple italic: *text* (just wrap in em tags)
+        s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
         // Double newlines = paragraph break
-        s = s.replace(/\\n\\n+/g, '</p><p>');
+        s = s.replace(/\n\n+/g, '</p><p>');
         // Single newlines = line break
-        s = s.replace(/\\n/g, '<br>');
+        s = s.replace(/\n/g, '<br>');
         return '<p>' + s + '</p>';
     }
 
