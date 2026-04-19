@@ -274,10 +274,11 @@ if _static_dir.exists():
 # Try multiple paths since Vercel's file layout varies
 _public_dir = None
 for _candidate in [
-    Path(__file__).resolve().parent.parent.parent.parent / "public",
+    Path(__file__).resolve().parent.parent.parent / "public",  # src/public/
+    Path(__file__).resolve().parent.parent.parent.parent / "public",  # project root public/
     Path.cwd() / "public",
+    Path("/var/task/src/public"),
     Path("/var/task/public"),
-    Path("/var/task/user/public"),
 ]:
     if _candidate.exists():
         _public_dir = _candidate
@@ -2793,7 +2794,10 @@ _CHAT_HTML = r"""<!DOCTYPE html>
     /* ── Init ─────────────────────────────────────────────────────────── */
     setStatus(true);
     showWelcomeCard();
-    startHTTP();
+    // Disable input during init to prevent double greeting
+    sendBtn.disabled = true;
+    userInput.disabled = true;
+    startHTTP().finally(() => { sendBtn.disabled = false; userInput.disabled = false; userInput.focus(); });
     // Apply stored lang pref to UI
     setLang(currentLang);
     // Init applied schemes button visibility
