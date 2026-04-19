@@ -3209,8 +3209,11 @@ async def http_chat(request: Request) -> dict[str, Any]:
 @app.get("/{filename:path}", response_class=Response)
 async def serve_public_files(filename: str) -> Response:
     """Serve HTML, PDF, and JS files from public directory."""
+    # Don't handle empty paths — let @app.get("/") handle root
+    if not filename:
+        return Response(status_code=404)
+    
     # Only allow specific files to be served from root
-    allowed_extensions = {".html", ".pdf", ".js"}
     allowed_files = {
         "ambiguity-map-global.html",
         "ambiguity-map-anchor-schemes.html",
