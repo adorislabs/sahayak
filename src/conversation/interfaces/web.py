@@ -3075,70 +3075,37 @@ async def websocket_chat(websocket: WebSocket) -> None:
                 language = data.get("language", "en")
                 if language not in ("en", "hi", "hinglish"):
                     language = "en"
-                # Try to restore an existing session if the client sends a token
+                # Get token from client (if resuming an existing session)
                 existing_token = data.get("token", "")
-                # Also check persisted sessions if not in memory
-                if existing_token and existing_token not in _engine._sessions:
-                    _engine._load_persisted_sessions()  # reload in case of restart
-                if existing_token and existing_token in _engine._sessions:
-                    sess = _engine._sessions[existing_token]
-                    if sess.current_state != "ENDED":
-                        sess.detected_language = language
-                        from src.conversation.engine import ConversationResponse
-                        # Build profile completion estimate
-                        populated_count = len(sess.get_populated_field_paths())
-                        profile_pct = min(100, round(populated_count / 10 * 100))
-                        # Include matching result if available so the UI can restore the panel
-                        has_results = sess.latest_result is not None
-                        # Build extraction_trace from session's field provenance so
-                        # the "What I Extracted" panel is populated on resume
-                        from src.conversation.extraction import _get_field_label_safe
-                        resume_extraction_trace = [
-                            {
-                                "source_span": prov.get("source_text", ""),
-                                "field_path": fp,
-                                "field_label": _get_field_label_safe(fp),
-                                "value": str(sess.profile_data.get(fp, "")),
-                                "confidence": prov.get("confidence", "HIGH"),
-                                "ner_status": "PASS",
-                                "reasoning": "Restored from saved session",
-                            }
-                            for fp, prov in sess.field_provenance.items()
-                            if fp in sess.profile_data
-                        ]
-                        resume_audit: dict = {"extraction_trace": resume_extraction_trace}
-                        if has_results and sess.latest_result:
-                            resume_audit["matching_result"] = sess.latest_result
-                        response = ConversationResponse(
-                            text="Welcome back! Picking up where we left off.",
-                            text_en="Welcome back! Picking up where we left off.",
-                            state_before=sess.current_state,
-                            state_after=sess.current_state,
-                            session_token=existing_token,
-                            matching_triggered=has_results,
-                            turn_audit=resume_audit,
-                        )
-                        # Inject extraction-like data so the client can restore profile bar
-                        response.extractions = [
-                            {"field_path": fp, "value": v, "raw_value": str(v),
-                             "confidence": "HIGH", "source_span": ""}
-                            for fp, v in sess.profile_data.items()
-                        ]
-                        session_token = existing_token
-                        is_resume = True
-                    else:
+                # For stateless sessions, just try to decode the token
+                # If it's valid, resume; if not or invalid, start new session
+                if existing_token:
+                    try:
+                        from src.conversation.session import ConversationSession
+                        sess = ConversationSession.from_token(existing_token)
+                        if sess.current_state != "ENDED":
+                            sess.detected_language = language
+                            # Use resume_session to get welcome message + fresh token
+                            response = await _engine.resume_session(existing_token)
+                            is_resume = True
+                        else:
+                            # Session ended, start fresh
+                            response = await _engine.start_session(language=language)
+                            is_resume = False
+                    except Exception:
+                        # Token invalid/expired, start fresh
                         response = await _engine.start_session(language=language)
+                        is_resume = False
                 else:
                     response = await _engine.start_session(language=language)
+                    is_resume = False
             elif action == "set_language":
                 # Language toggle — update session language without a new turn
                 language = data.get("language", "en")
                 if language not in ("en", "hi", "hinglish"):
                     language = "en"
-                token = data.get("token", session_token)
-                sess = _engine._sessions.get(token)
-                if sess:
-                    sess.detected_language = language
+                # For stateless sessions, we don't persist language preference across turns
+                # It's sent with each message if needed
                 await websocket.send_json({"ack": "language_set", "language": language})
                 continue
             else:
@@ -3208,16 +3175,6 @@ async def http_chat(request: Request) -> dict[str, Any]:
     # Sanitise inputs
     message = _sanitise_input(str(data.get("message", "")))
     session_token = str(data.get("session_token", "") or "")
-    # Session tokens are hex strings — reject anything else
-    if session_token and not re.match(r"^[0-9a-fA-F]{1,64}$", session_token):
-        session_token = ""
-
-    # Apply client-side language hint to session before processing
-    client_lang = data.get("language")
-    if client_lang in ("en", "hi", "hinglish") and session_token:
-        sess = _engine._sessions.get(session_token)
-        if sess:
-            sess.detected_language = client_lang
 
     if not session_token:
         response = await _engine.start_session()
