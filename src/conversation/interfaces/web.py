@@ -1551,6 +1551,11 @@ _CHAT_HTML = r"""<!DOCTYPE html>
     let ws = null;
     // Restore session token from previous visit so conversation is resumed
     let sessionToken = localStorage.getItem('cbc_session_token') || '';
+    // Guard: discard oversized tokens from previous versions
+    if (sessionToken.length > 30000) {
+        sessionToken = '';
+        localStorage.removeItem('cbc_session_token');
+    }
     let turnCount = 0;
     let currentLang = localStorage.getItem('cbc_lang_pref') || 'en';
     let auditStore = {};          // turnId → turn_audit payload
