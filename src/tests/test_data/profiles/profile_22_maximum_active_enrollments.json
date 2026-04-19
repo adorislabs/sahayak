@@ -1,0 +1,31 @@
+{
+  "applicant.age": 50,
+  "applicant.gender": "male",
+  "applicant.caste_category": "SC",
+  "applicant.marital_status": "married",
+  "applicant.disability_status": false,
+  "applicant.land_ownership_status": true,
+  "location.state": "MP",
+  "household.income_annual": 100000,
+  "household.income_monthly": 8333,
+  "household.size": 5,
+  "household.bpl_status": true,
+  "household.ration_card_type": "AAY",
+  "household.residence_type": "rural",
+  "household.land_acres": 2.0,
+  "documents.aadhaar": true,
+  "documents.bank_account": true,
+  "documents.bank_account_type": "jan_dhan",
+  "documents.caste_certificate": true,
+  "documents.income_certificate": true,
+  "documents.mgnrega_job_card": true,
+  "employment.type": "agriculture",
+  "employment.is_epfo_member": false,
+  "employment.is_esic_member": false,
+  "employment.is_nps_subscriber": false,
+  "employment.is_income_tax_payer": false,
+  "schemes.active_enrollments": [
+    "PMKISAN", "MGNREGA", "NSAP", "PMSYM", "PMJAY",
+    "PMFBY", "PM-KISAN-MAN-DHAN", "SAMPANN", "JSSK", "NFBS"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "applicant.age": 58,
+  "applicant.gender": "male",
+  "applicant.caste_category": "GENERAL",
+  "applicant.marital_status": "widowed",
+  "applicant.disability_status": false,
+  "location.state": "DL",
+  "household.income_annual": 96000,
+  "household.size": 1,
+  "household.bpl_status": false,
+  "household.residence_type": "urban",
+  "documents.aadhaar": true,
+  "documents.bank_account": true,
+  "documents.bank_account_type": "savings",
+  "employment.type": "self_employed",
+  "employment.is_epfo_member": false,
+  "employment.is_esic_member": false,
+  "employment.is_nps_subscriber": false,
+  "employment.is_income_tax_payer": false,
+  "schemes.active_enrollments": []
+}

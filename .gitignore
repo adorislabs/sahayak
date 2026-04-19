@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# macOS
+.DS_Store
+
+# Data sessions (runtime, not source)
+data/sessions/*.json
+
+# Reports — LaTeX build artefacts
+report/*.aux
+report/*.log
+report/*.toc
+report/*.out
+report/*.fls
+report/*.fdb_latexmk
+report/_minted-*/

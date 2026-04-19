@@ -1,0 +1,21 @@
+# Render.com deployment configuration.
+# Provides a free-tier web service with full WebSocket support and
+# a persistent process (unlike Vercel's serverless model).
+#
+# Deploy: https://dashboard.render.com/select-repo
+# Select this repo → Render detects render.yaml automatically.
+
+services:
+  - type: web
+    name: sahayak-cbc
+    runtime: python
+    region: singapore       # closest to India
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn src.conversation.interfaces.web:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false          # set manually in Render dashboard
+      - key: PYTHONPATH
+        value: /opt/render/project/src
+    healthCheckPath: /health

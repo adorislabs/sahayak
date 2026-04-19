@@ -1,0 +1,22 @@
+{
+  "applicant.age": 26,
+  "applicant.gender": "male",
+  "applicant.caste_category": "OBC",
+  "applicant.marital_status": "married",
+  "location.state": "RJ",
+  "household.income_annual": 144000,
+  "household.income_monthly": 12000,
+  "household.size": 3,
+  "household.bpl_status": false,
+  "household.residence_type": "urban",
+  "documents.aadhaar": true,
+  "documents.bank_account": true,
+  "documents.bank_account_type": "jan_dhan",
+  "employment.type": "unorganised",
+  "employment.is_income_tax_payer": false,
+  "employment.is_epfo_member": false,
+  "employment.is_esic_member": false,
+  "employment.is_nps_subscriber": false,
+  "health.child_count": 1,
+  "health.pregnancy_status": false
+}

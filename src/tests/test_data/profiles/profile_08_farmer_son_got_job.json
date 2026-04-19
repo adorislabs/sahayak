@@ -1,0 +1,19 @@
+{
+  "applicant.age": 52,
+  "applicant.gender": "male",
+  "applicant.caste_category": "OBC",
+  "applicant.marital_status": "married",
+  "applicant.land_ownership_status": true,
+  "location.state": "MP",
+  "household.income_annual": 180000,
+  "household.land_acres": 4.0,
+  "household.size": 5,
+  "household.bpl_status": false,
+  "household.ration_card_type": "APL",
+  "household.residence_type": "rural",
+  "documents.aadhaar": true,
+  "documents.bank_account": true,
+  "employment.type": "agriculture",
+  "employment.is_income_tax_payer": false,
+  "schemes.active_enrollments": ["PMKISAN"]
+}

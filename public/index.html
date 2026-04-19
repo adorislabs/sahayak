@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sahayak — Citizen Benefit Checker</title>
+  <meta name="description" content="Deterministic eligibility matching for 3,400+ Indian government welfare schemes.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --saffron: #F4880A;
+      --green:   #138808;
+      --bg:      #FAFAF8;
+      --text:    #1A1A1A;
+      --muted:   #6B7280;
+      --card:    #FFFFFF;
+      --border:  #E5E7EB;
+    }
+    body {
+      font-family: 'Nunito', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    header {
+      background: linear-gradient(135deg, #FF9933 0%, #F4880A 50%, #138808 100%);
+      color: white;
+      padding: 3rem 1.5rem 2.5rem;
+      text-align: center;
+    }
+    header h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; letter-spacing: -0.5px; }
+    header p  { font-size: 1.15rem; margin-top: 0.75rem; opacity: 0.92; max-width: 560px; margin-inline: auto; }
+    .badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.22);
+      border: 1.5px solid rgba(255,255,255,0.45);
+      border-radius: 999px;
+      padding: 0.3rem 1rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 3rem 1.5rem; }
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      margin-bottom: 3rem;
+    }
+    .stat {
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.75rem;
+      text-align: center;
+      flex: 1 1 140px;
+    }
+    .stat-num { font-size: 1.75rem; font-weight: 800; color: var(--saffron); }
+    .stat-lbl { font-size: 0.78rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.2rem; }
+
+    h2 { font-size: 1.4rem; font-weight: 800; margin-bottom: 1.25rem; }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 3rem;
+    }
+    .card {
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      transition: box-shadow 0.15s;
+    }
+    .card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .card-icon { font-size: 1.75rem; }
+    .card h3 { font-size: 1.05rem; font-weight: 800; }
+    .card p { font-size: 0.88rem; color: var(--muted); flex: 1; }
+    .btn {
+      display: inline-block;
+      padding: 0.6rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 700;
+      text-decoration: none;
+      text-align: center;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary   { background: var(--saffron); color: white; }
+    .btn-secondary { background: var(--green);   color: white; }
+    .btn-outline   { border: 2px solid var(--border); color: var(--text); }
+
+    .section-note {
+      background: #F0FDF4;
+      border: 1.5px solid #BBF7D0;
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      font-size: 0.875rem;
+      color: #166534;
+      margin-bottom: 2.5rem;
+    }
+    .section-note strong { font-weight: 800; }
+
+    footer {
+      text-align: center;
+      padding: 2rem 1.5rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="badge">Open Source</div>
+  <h1>Sahayak</h1>
+  <p>Deterministic eligibility matching for 3,400+ Indian government welfare schemes — bilingual, conversational, explainable.</p>
+</header>
+
+<main>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-num">3,400+</div><div class="stat-lbl">Schemes</div></div>
+    <div class="stat"><div class="stat-num">20,718</div><div class="stat-lbl">Rules</div></div>
+    <div class="stat"><div class="stat-num">68</div><div class="stat-lbl">Batches</div></div>
+    <div class="stat"><div class="stat-num">30+</div><div class="stat-lbl">Fields</div></div>
+    <div class="stat"><div class="stat-num">2</div><div class="stat-lbl">Languages</div></div>
+  </div>
+
+  <h2>Deliverables</h2>
+  <div class="cards">
+
+    <div class="card">
+      <div class="card-icon">🗺️</div>
+      <h3>Ambiguity Map — Global</h3>
+      <p>Interactive visualisation of all 1,199 ambiguity flags across 583 schemes. Filter by severity, type, and state.</p>
+      <a href="ambiguity-map-global.html" class="btn btn-primary">Open Map</a>
+    </div>
+
+    <div class="card">
+      <div class="card-icon">⚓</div>
+      <h3>Ambiguity Map — Anchor Schemes</h3>
+      <p>Deep-dive view for the 12 highest-priority schemes, with per-rule ambiguity details and suggested resolutions.</p>
+      <a href="ambiguity-map-anchor-schemes.html" class="btn btn-primary">Open Map</a>
+    </div>
+
+    <div class="card">
+      <div class="card-icon">📄</div>
+      <h3>Technical Report</h3>
+      <p>LaTeX architecture report: system diagram, key design decisions, and production readiness assessment.</p>
+      <a href="report.pdf" class="btn btn-secondary" target="_blank">View PDF</a>
+    </div>
+
+    <div class="card">
+      <div class="card-icon">💬</div>
+      <h3>Live Chat App (API)</h3>
+      <p>The FastAPI conversational UI. Runs locally or on Render.com. WebSocket + HTTP POST, bilingual (EN/HI).</p>
+      <a href="https://github.com" class="btn btn-outline">See README</a>
+    </div>
+
+  </div>
+
+  <div class="section-note">
+    <strong>Running the chat app locally:</strong>&nbsp;
+    Clone the repo, run <code>pip install -e .</code>, set <code>GEMINI_API_KEY</code> in <code>.env</code>,
+    then <code>uvicorn src.conversation.interfaces.web:app --reload</code> → open <a href="http://localhost:8000">localhost:8000</a>.
+  </div>
+
+</main>
+
+<footer>
+  Citizen Benefit Checker &mdash; Sahayak &nbsp;|&nbsp; Data: Indian Government Schemes (Kaggle) &nbsp;|&nbsp; License: MIT
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "applicant.age": 55,
+  "applicant.gender": "female",
+  "applicant.caste_category": "ST",
+  "applicant.marital_status": "widowed",
+  "applicant.disability_status": false,
+  "location.state": "CG",
+  "household.income_annual": 60000,
+  "household.size": 3,
+  "household.bpl_status": true,
+  "household.ration_card_type": "AAY",
+  "household.residence_type": "rural",
+  "documents.aadhaar": true,
+  "documents.bank_account": false,
+  "documents.bank_account_type": "none",
+  "employment.type": "agriculture",
+  "employment.is_income_tax_payer": false
+}

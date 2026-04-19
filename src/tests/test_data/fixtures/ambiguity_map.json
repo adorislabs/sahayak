@@ -1,0 +1,72 @@
+[
+  {
+    "ambiguity_id": "AMB-002",
+    "scheme_id": "PMKISAN",
+    "rule_id": "PMKISAN-R001",
+    "ambiguity_type_code": 2,
+    "ambiguity_type_name": "Evidence Gap",
+    "description": "Phrase 'cultivable agricultural land' is not defined. Leased land may or may not qualify depending on state land records.",
+    "severity": "HIGH",
+    "resolution_status": "OPEN"
+  },
+  {
+    "ambiguity_id": "AMB-004",
+    "scheme_id": "PMSYM",
+    "rule_id": "PMSYM-ADM-001",
+    "ambiguity_type_code": 4,
+    "ambiguity_type_name": "Discretionary Clauses",
+    "description": "District officials have discretion on income verification for PM-SYM without defined rubric.",
+    "severity": "MEDIUM",
+    "resolution_status": "OPEN"
+  },
+  {
+    "ambiguity_id": "AMB-007",
+    "scheme_id": "MGNREGA",
+    "rule_id": "MGNREGA-R002",
+    "ambiguity_type_code": 7,
+    "ambiguity_type_name": "Portability Gap",
+    "description": "Migrant workers registered in home state gram panchayat cannot transfer MGNREGA job card to their work state.",
+    "severity": "CRITICAL",
+    "resolution_status": "OPEN"
+  },
+  {
+    "ambiguity_id": "AMB-012",
+    "scheme_id": "NSAP",
+    "rule_id": "NSAP-R002",
+    "ambiguity_type_code": 12,
+    "ambiguity_type_name": "Quota Tie-breaking Logic",
+    "description": "NSAP disability threshold conflict: 40% in central guidelines vs 80% in some state addenda.",
+    "severity": "CRITICAL",
+    "resolution_status": "OPEN"
+  },
+  {
+    "ambiguity_id": "AMB-016",
+    "scheme_id": "PMKISAN",
+    "rule_id": null,
+    "ambiguity_type_code": 16,
+    "ambiguity_type_name": "Household Unit Duality",
+    "description": "Conflicting definitions of household unit between PM-KISAN records and Ration Card entries — adult son with government job may or may not count as separate household.",
+    "severity": "HIGH",
+    "resolution_status": "OPEN"
+  },
+  {
+    "ambiguity_id": "AMB-020",
+    "scheme_id": "NSAP",
+    "rule_id": "NSAP-PRE-001",
+    "ambiguity_type_code": 20,
+    "ambiguity_type_name": "Infrastructure Preconditions",
+    "description": "No offline fallback defined for tribal areas with no banking access. DBT-only mode silently excludes remote beneficiaries.",
+    "severity": "HIGH",
+    "resolution_status": "OPEN"
+  },
+  {
+    "ambiguity_id": "AMB-021",
+    "scheme_id": "NSAP",
+    "rule_id": "NSAP-REVIEW-001",
+    "ambiguity_type_code": 21,
+    "ambiguity_type_name": "Life-Event Transition Protocols",
+    "description": "No protocol defined for widow who remarries — does she lose pension immediately or is there a grace period?",
+    "severity": "HIGH",
+    "resolution_status": "OPEN"
+  }
+]

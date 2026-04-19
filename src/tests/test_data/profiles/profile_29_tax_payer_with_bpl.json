@@ -1,0 +1,23 @@
+{
+  "applicant.age": 45,
+  "applicant.gender": "male",
+  "applicant.caste_category": "GENERAL",
+  "applicant.marital_status": "married",
+  "applicant.disability_status": false,
+  "location.state": "MH",
+  "household.income_annual": 60000,
+  "household.income_monthly": 5000,
+  "household.size": 4,
+  "household.bpl_status": true,
+  "household.ration_card_type": "BPL",
+  "household.residence_type": "urban",
+  "documents.aadhaar": true,
+  "documents.bank_account": true,
+  "documents.bank_account_type": "jan_dhan",
+  "employment.type": "informal",
+  "employment.is_epfo_member": false,
+  "employment.is_esic_member": false,
+  "employment.is_nps_subscriber": false,
+  "employment.is_income_tax_payer": true,
+  "schemes.active_enrollments": []
+}

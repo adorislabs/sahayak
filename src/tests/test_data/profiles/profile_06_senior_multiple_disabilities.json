@@ -1,0 +1,19 @@
+{
+  "applicant.age": 72,
+  "applicant.gender": "male",
+  "applicant.caste_category": "General",
+  "applicant.marital_status": "married",
+  "applicant.disability_status": true,
+  "applicant.disability_percentage": 60,
+  "location.state": "KA",
+  "household.income_annual": 200000,
+  "household.size": 2,
+  "household.bpl_status": false,
+  "household.ration_card_type": "APL",
+  "household.residence_type": "urban",
+  "documents.aadhaar": true,
+  "documents.bank_account": true,
+  "documents.bank_account_type": "savings",
+  "employment.type": "unemployed",
+  "employment.is_income_tax_payer": false
+}

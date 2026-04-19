@@ -1,0 +1,21 @@
+{
+  "applicant.age": 23,
+  "applicant.gender": "male",
+  "applicant.caste_category": "ST",
+  "applicant.marital_status": "unmarried",
+  "location.state": "MH",
+  "household.income_annual": 200000,
+  "household.size": 6,
+  "household.bpl_status": true,
+  "household.ration_card_type": "BPL",
+  "household.residence_type": "semi_urban",
+  "documents.aadhaar": true,
+  "documents.bank_account": true,
+  "documents.bank_account_type": "savings",
+  "documents.caste_certificate": true,
+  "employment.type": "unemployed",
+  "employment.is_income_tax_payer": false,
+  "employment.is_epfo_member": false,
+  "employment.is_esic_member": false,
+  "employment.is_nps_subscriber": false
+}

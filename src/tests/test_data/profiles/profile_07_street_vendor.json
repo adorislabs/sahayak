@@ -1,0 +1,19 @@
+{
+  "applicant.age": 28,
+  "applicant.gender": "female",
+  "applicant.caste_category": "Minority",
+  "applicant.marital_status": "unmarried",
+  "location.state": "DL",
+  "household.income_annual": 96000,
+  "household.size": 1,
+  "household.bpl_status": true,
+  "household.residence_type": "urban",
+  "documents.aadhaar": true,
+  "documents.bank_account": true,
+  "documents.bank_account_type": "jan_dhan",
+  "employment.type": "self_employed",
+  "employment.is_income_tax_payer": false,
+  "employment.is_epfo_member": false,
+  "employment.is_esic_member": false,
+  "employment.is_nps_subscriber": false
+}

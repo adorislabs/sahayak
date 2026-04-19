@@ -1,0 +1,14 @@
+# Runtime dependencies for the CBC web API.
+# Heavy offline-processing packages (playwright, pytesseract, pdfplumber, polars,
+# sentence-transformers) are intentionally excluded — they are only used by the
+# data-ingestion scripts (src/data_sourcing.py, src/source_anchoring.py), not
+# by the live conversation API.
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.0
+httpx>=0.27
+google-genai>=1.0
+python-dotenv>=1.0
+cryptography>=43.0
+aiofiles>=23.0
+rich>=13.0

@@ -1,0 +1,21 @@
+{
+  "applicant.age": 38,
+  "applicant.gender": "male",
+  "applicant.caste_category": "General",
+  "applicant.marital_status": "married",
+  "applicant.land_ownership_status": false,
+  "location.state": "UP",
+  "household.income_annual": 150000,
+  "household.land_acres": 3.0,
+  "household.size": 5,
+  "household.bpl_status": false,
+  "household.residence_type": "rural",
+  "documents.aadhaar": true,
+  "documents.bank_account": true,
+  "documents.bank_account_type": "savings",
+  "employment.type": "agriculture",
+  "employment.is_income_tax_payer": false,
+  "employment.is_epfo_member": false,
+  "employment.is_esic_member": false,
+  "employment.is_nps_subscriber": false
+}

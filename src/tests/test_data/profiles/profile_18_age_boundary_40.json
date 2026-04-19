@@ -1,0 +1,22 @@
+{
+  "applicant.age": 40,
+  "applicant.gender": "female",
+  "applicant.caste_category": "SC",
+  "applicant.marital_status": "married",
+  "applicant.disability_status": false,
+  "location.state": "RJ",
+  "household.income_annual": 168000,
+  "household.income_monthly": 14000,
+  "household.size": 5,
+  "household.bpl_status": false,
+  "household.residence_type": "rural",
+  "documents.aadhaar": true,
+  "documents.bank_account": true,
+  "documents.bank_account_type": "savings",
+  "employment.type": "informal",
+  "employment.is_epfo_member": false,
+  "employment.is_esic_member": false,
+  "employment.is_nps_subscriber": false,
+  "employment.is_income_tax_payer": false,
+  "schemes.active_enrollments": []
+}

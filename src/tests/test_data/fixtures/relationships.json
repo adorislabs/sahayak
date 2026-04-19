@@ -1,0 +1,62 @@
+[
+  {
+    "relationship_id": "REL-001",
+    "scheme_a": "MGNREGA",
+    "scheme_b": "PMKISAN",
+    "relationship_type": "COMPLEMENTARY",
+    "confidence": 0.88,
+    "display_to_user": true,
+    "source_evidence": "Both target agricultural households; MGNREGA provides work while PM-KISAN provides income support",
+    "notes": "Complementary: rural farmers benefit from both"
+  },
+  {
+    "relationship_id": "REL-002",
+    "scheme_a": "PMSYM",
+    "scheme_b": "NSAP",
+    "relationship_type": "COMPLEMENTARY",
+    "confidence": 0.75,
+    "display_to_user": true,
+    "source_evidence": "PM-SYM provides contributory pension (age 18-40); NSAP provides non-contributory pension (age 60+). Sequential lifecycle benefit.",
+    "notes": "Sequential: PM-SYM first, then graduate to NSAP at 60"
+  },
+  {
+    "relationship_id": "REL-003",
+    "scheme_a": "PMSYM",
+    "scheme_b": "NSAP",
+    "relationship_type": "MUTUAL_EXCLUSION",
+    "confidence": 0.95,
+    "display_to_user": true,
+    "source_evidence": "PM-SYM subscriber who turns 60 should not receive both PM-SYM matured pension and NSAP pension simultaneously — double-benefit prohibition.",
+    "notes": "Once PM-SYM matures, NSAP component should not overlap"
+  },
+  {
+    "relationship_id": "REL-004",
+    "scheme_a": "MGNREGA",
+    "scheme_b": "PMKISAN",
+    "relationship_type": "PREREQUISITE",
+    "confidence": 0.70,
+    "display_to_user": true,
+    "source_evidence": "PM-KISAN beneficiaries in some states required to show MGNREGA job card as proof of agricultural household status",
+    "notes": "direction: MGNREGA must come before PMKISAN in some state implementations"
+  },
+  {
+    "relationship_id": "REL-005",
+    "scheme_a": "PMKISAN",
+    "scheme_b": "MGNREGA",
+    "relationship_type": "OVERLAP",
+    "confidence": 0.65,
+    "display_to_user": true,
+    "source_evidence": "Both schemes target rural households; district verification may be shared",
+    "notes": "Operational overlap — no eligibility conflict"
+  },
+  {
+    "relationship_id": "REL-006",
+    "scheme_a": "PMKISAN",
+    "scheme_b": "NSAP",
+    "relationship_type": "COMPLEMENTARY",
+    "confidence": 0.55,
+    "display_to_user": false,
+    "source_evidence": "Low confidence — elderly farmers may hold both but benefit types are distinct",
+    "notes": "Low confidence: not displayed to user"
+  }
+]

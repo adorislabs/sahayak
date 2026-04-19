@@ -1,0 +1,17 @@
+{
+  "applicant.age": 30,
+  "applicant.gender": "male",
+  "applicant.caste_category": "SC",
+  "applicant.marital_status": "married",
+  "location.state": "GJ",
+  "household.income_annual": 100000,
+  "household.size": 6,
+  "household.bpl_status": true,
+  "household.ration_card_type": "PHH",
+  "household.residence_type": "urban",
+  "documents.aadhaar": true,
+  "documents.bank_account": true,
+  "documents.bank_account_type": "jan_dhan",
+  "employment.type": "informal",
+  "employment.is_income_tax_payer": false
+}

@@ -1,0 +1,21 @@
+# Files/directories excluded from Vercel builds.
+# Vercel still deploys the source to its CDN, but these won't be
+# included in the Python function bundle.
+
+# LaTeX source — only PDF is needed (already in public/)
+report/report.tex
+report/Makefile
+report/README.md
+
+# Docs source — HTML maps are served from public/, not docs/
+docs/
+
+# Tests — not needed at runtime
+src/tests/
+
+# Archive
+archive/
+
+# Dev tooling
+.venv/
+*.egg-info/

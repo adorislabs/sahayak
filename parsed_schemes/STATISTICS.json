@@ -1,0 +1,54 @@
+{
+  "dataset": {
+    "total_schemes": 3400,
+    "total_rules": 20718,
+    "batches": 68
+  },
+  "by_rule_type": {
+    "eligibility": 18642,
+    "prerequisite": 670,
+    "disqualifying": 1406
+  },
+  "by_condition_type": {
+    "other": 11188,
+    "domicile": 1501,
+    "age_range": 1407,
+    "occupation": 1611,
+    "marital_status": 286,
+    "income_ceiling": 1048,
+    "caste_category": 665,
+    "gender": 899,
+    "document:bank_account": 68,
+    "education_level": 1261,
+    "land_ownership": 269,
+    "poverty_status": 170,
+    "document:ration_card": 35,
+    "employment:income_tax_status": 72,
+    "document:aadhaar": 90,
+    "disability": 124,
+    "family_size": 24
+  },
+  "by_operator": {
+    "EQ": 17276,
+    "BETWEEN": 503,
+    "LTE": 545,
+    "LT": 137,
+    "GT": 226,
+    "GTE": 915,
+    "IN": 1116
+  },
+  "by_confidence_band": {
+    "0.80-0.89": 10079,
+    "0.90-1.00": 2326,
+    "0.70-0.79": 6121,
+    "0.60-0.69": 1578,
+    "<0.60": 614
+  },
+  "by_state": {
+    "ST": 2859,
+    "central": 541
+  },
+  "review_flagged": 581,
+  "average_rules_per_scheme": 6.093529411764706,
+  "average_confidence": 0.793648035524832
+}
