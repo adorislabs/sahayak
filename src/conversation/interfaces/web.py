@@ -271,19 +271,43 @@ if _static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
 # Mount public directory for HTML files (ambiguity maps, report, etc.)
-_public_dir = Path(__file__).resolve().parent.parent.parent.parent / "public"
-if not _public_dir.exists():
-    # Vercel places files relative to project root
-    _public_dir = Path.cwd() / "public"
-if not _public_dir.exists():
-    _public_dir = Path("/var/task/public")
+# Try multiple paths since Vercel's file layout varies
+_public_dir = None
+for _candidate in [
+    Path(__file__).resolve().parent.parent.parent.parent / "public",
+    Path.cwd() / "public",
+    Path("/var/task/public"),
+    Path("/var/task/user/public"),
+    Path(os.path.dirname(os.path.abspath(__file__))).parent.parent.parent / "public",
+]:
+    if _candidate.exists():
+        _public_dir = _candidate
+        break
+if _public_dir is None:
+    _public_dir = Path("/var/task/public")  # fallback
 logger.info("Public dir resolved to: %s (exists=%s)", _public_dir, _public_dir.exists())
+
+# Pre-load public files into memory for reliable serving on Vercel
+_PUBLIC_FILES: dict[str, bytes] = {}
+_PUBLIC_TYPES: dict[str, str] = {
+    ".html": "text/html; charset=utf-8",
+    ".pdf": "application/pdf",
+    ".js": "application/javascript",
+}
 if _public_dir.exists():
-    # Create a custom mount that handles both static files and the root "/" case
+    for _pf in _public_dir.iterdir():
+        if _pf.is_file() and _pf.suffix in _PUBLIC_TYPES:
+            try:
+                _PUBLIC_FILES[_pf.name] = _pf.read_bytes()
+                logger.info("Loaded public file: %s (%d bytes)", _pf.name, len(_PUBLIC_FILES[_pf.name]))
+            except Exception as e:
+                logger.warning("Failed to load public file %s: %s", _pf.name, e)
     try:
         app.mount("/public", StaticFiles(directory=str(_public_dir)), name="public-static")
     except Exception:
         pass
+else:
+    logger.warning("Public dir NOT found. Tried all candidate paths.")
 
 
 # ---------------------------------------------------------------------------
@@ -3167,43 +3191,29 @@ async def http_chat(request: Request) -> dict[str, Any]:
     }
 
 
+@app.get("/debug/public-files")
+async def debug_public_files():
+    """Debug: show loaded public files and path resolution."""
+    return {
+        "public_dir": str(_public_dir),
+        "public_dir_exists": _public_dir.exists() if _public_dir else False,
+        "loaded_files": {k: len(v) for k, v in _PUBLIC_FILES.items()},
+        "cwd": str(Path.cwd()),
+        "file": str(Path(__file__).resolve()),
+    }
+
+
 # Serve public HTML/PDF files at root level for backward compatibility
 @app.get("/{filename:path}", response_class=Response)
 async def serve_public_files(filename: str) -> Response:
-    """Serve HTML, PDF, and JS files from public directory."""
-    # Don't handle empty paths — let @app.get("/") handle root
+    """Serve HTML, PDF, and JS files from pre-loaded memory cache."""
     if not filename:
         return Response(status_code=404)
     
-    # Only allow specific files to be served from root
-    allowed_files = {
-        "ambiguity-map-global.html",
-        "ambiguity-map-anchor-schemes.html",
-        "report.pdf",
-        "rules_data.js",
-    }
+    # Serve from memory cache (loaded at startup)
+    if filename in _PUBLIC_FILES:
+        suffix = Path(filename).suffix
+        content_type = _PUBLIC_TYPES.get(suffix, "application/octet-stream")
+        return Response(content=_PUBLIC_FILES[filename], media_type=content_type)
     
-    # Check if file is allowed
-    if filename not in allowed_files:
-        return Response(status_code=404)
-    
-    file_path = _public_dir / filename
-    if not file_path.exists() or not file_path.is_file():
-        return Response(status_code=404)
-    
-    # Determine content type
-    if filename.endswith(".html"):
-        content_type = "text/html; charset=utf-8"
-    elif filename.endswith(".pdf"):
-        content_type = "application/pdf"
-    elif filename.endswith(".js"):
-        content_type = "application/javascript"
-    else:
-        content_type = "application/octet-stream"
-    
-    try:
-        with open(file_path, "rb") as f:
-            content = f.read()
-        return Response(content=content, media_type=content_type)
-    except Exception:
-        return Response(status_code=500)
+    return Response(status_code=404)
