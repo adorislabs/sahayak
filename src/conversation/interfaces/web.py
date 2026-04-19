@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 # Security configuration
 # ---------------------------------------------------------------------------
 _MAX_MESSAGE_LEN = 2_000          # characters — reject anything longer
-_MAX_BODY_BYTES   = 32_768        # 32 KB request body cap
+_MAX_BODY_BYTES   = 4_194_304     # 4 MB request body cap (Vercel allows ~4.5 MB)
 _RATE_LIMIT_RPM   = 30            # max requests per IP per minute
 _RATE_LIMIT_WS_PER_IP = 5        # max simultaneous WS connections per IP
 
@@ -1961,9 +1961,9 @@ _CHAT_HTML = r"""<!DOCTYPE html>
         const confBreakdown = scheme.confidence_breakdown || {};
         const confPct = confBreakdown.composite_pct || Math.round((scheme.confidence || 0) * 100);
         const rules = scheme.rule_evaluations || [];
-        const passedRules = rules.filter(r => r.outcome === 'PASS').length;
+        const passedRules = rules.filter(r => r.outcome === 'PASS' || r.outcome === 'UNVERIFIED_PASS').length;
         const failedRules = rules.filter(r => r.outcome === 'FAIL').length;
-        const undetermined = rules.filter(r => r.outcome !== 'PASS' && r.outcome !== 'FAIL').length;
+        const undetermined = rules.filter(r => r.outcome !== 'PASS' && r.outcome !== 'UNVERIFIED_PASS' && r.outcome !== 'FAIL').length;
 
         // Status banner
         const bannerMap = {
@@ -2037,8 +2037,8 @@ _CHAT_HTML = r"""<!DOCTYPE html>
             html += `<div class="scheme-detail-section">
               <div class="detail-section-title">⚖️ Why This Score? (${rules.length} rules checked)</div>`;
             rules.slice(0,15).forEach(r => {
-                const passed = r.outcome === 'PASS';
-                const undet  = r.outcome !== 'PASS' && r.outcome !== 'FAIL';
+                const passed = r.outcome === 'PASS' || r.outcome === 'UNVERIFIED_PASS';
+                const undet  = !passed && r.outcome !== 'FAIL';
                 const icon = passed ? '✅' : undet ? '❓' : '❌';
                 const userVal = r.user_value != null ? String(r.user_value) : '';
                 const ruleVal = r.rule_value != null ? String(r.rule_value) : '';
@@ -2050,7 +2050,8 @@ _CHAT_HTML = r"""<!DOCTYPE html>
                       ${userVal ? `Your value: <span class="your">${esc(userVal)}</span>` : '<span style="color:var(--text-hint)">your value: unknown</span>'}
                       ${ruleVal ? ` &nbsp;·&nbsp; Required: <span class="required">${esc(ruleVal)}</span>` : ''}
                     </div>` : ''}
-                    ${undet ? '<div style="font-size:0.7rem;color:var(--warning);margin-top:0.1rem">We don\'t have this information yet</div>' : ''}
+                    ${undet ? `<div style="font-size:0.7rem;color:var(--warning);margin-top:0.1rem">${r.undetermined_reason === 'Field not provided' ? 'We don\'t have this information yet' : 'Rule value not specified in scheme data — cannot evaluate automatically'}</div>` : ''}
+                    ${r.outcome === 'UNVERIFIED_PASS' ? '<div style="font-size:0.7rem;color:var(--success);margin-top:0.1rem">✓ Matches (unverified data)</div>' : ''}
                   </div>
                 </div>`;
             });
@@ -2622,7 +2623,6 @@ _CHAT_HTML = r"""<!DOCTYPE html>
     }
 
     /* ── HTTP communication ────────────────────────────────────────────── */
-    let ws = null;
     function handleResponse(data) {
         const tid = turnCount++;
         hideTyping();
@@ -2727,6 +2727,12 @@ _CHAT_HTML = r"""<!DOCTYPE html>
         sendBtn.disabled = true;
         const isMatchingMsg = _isMatchingHint(text);
         showTyping(isMatchingMsg);
+        // Guard: if session token is too large, trim it to prevent 413
+        if (sessionToken.length > 500000) {
+            sessionToken = '';
+            localStorage.removeItem('cbc_session_token');
+            addMessage('Session was getting too large — starting fresh context. Your results are still visible above.', 'system');
+        }
         try {
             const r = await fetch('/api/chat', {
                 method: 'POST',
