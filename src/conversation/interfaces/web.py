@@ -278,7 +278,6 @@ for _candidate in [
     Path.cwd() / "public",
     Path("/var/task/public"),
     Path("/var/task/user/public"),
-    Path(os.path.dirname(os.path.abspath(__file__))).parent.parent.parent / "public",
 ]:
     if _candidate.exists():
         _public_dir = _candidate
