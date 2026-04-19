@@ -274,7 +274,7 @@ if _static_dir.exists():
 _public_dir = Path(__file__).resolve().parent.parent.parent.parent / "public"
 if not _public_dir.exists():
     # Vercel places files relative to project root
-    _public_dir = Path(os.getcwd()) / "public"
+    _public_dir = Path.cwd() / "public"
 if not _public_dir.exists():
     _public_dir = Path("/var/task/public")
 logger.info("Public dir resolved to: %s (exists=%s)", _public_dir, _public_dir.exists())
