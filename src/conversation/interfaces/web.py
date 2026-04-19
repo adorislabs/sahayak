@@ -3145,16 +3145,12 @@ async def websocket_chat(websocket: WebSocket) -> None:
                 # Sanitise user input before passing to the engine
                 message = _sanitise_input(str(data.get("message", "")))
                 token = data.get("token", session_token)
-                # Apply client-side language hint to session before processing
+                # Client-side language hint (for new sessions only)
                 client_lang = data.get("language")
-                if client_lang in ("en", "hi", "hinglish") and token:
-                    sess = _engine._sessions.get(token)
-                    if sess:
-                        sess.detected_language = client_lang
                 # Send a quick "thinking" hint before the full LLM pipeline
                 await websocket.send_json({"type": "thinking", "text": _get_thinking_hint(message)})
                 if not token:
-                    response = await _engine.start_session()
+                    response = await _engine.start_session(language=client_lang or "en")
                 else:
                     response = await _engine.process_message(
                         session_token=token,

@@ -93,19 +93,6 @@ def _safe_serialise(value: Any) -> Any:
     return str(value)
 
 
-def _default_session_store() -> Path | None:
-    """Return the local session persistence directory, creating it if needed."""
-    import os
-    # Respect env override; fall back to <project>/data/sessions
-    store = os.environ.get("CBC_SESSION_STORE")
-    if store:
-        return Path(store)
-    # Default: local data dir alongside the project root
-    try:
-        project_root = Path(__file__).resolve().parent.parent.parent
-        return project_root / "data" / "sessions"
-    except Exception:
-        return None
 
 
 def _conf_explanation(conf: dict) -> str:
@@ -353,58 +340,20 @@ class ConversationEngine:
         self,
         rule_base_path: Path,
         llm_provider: str = "gemini",
-        session_store_path: Path | None = None,
     ) -> None:
         self.rule_base_path = rule_base_path
         self.llm_provider = llm_provider
         self._llm_available = True  # flipped to False on LLMUnavailableError
         self._ner_guard = NERGuard()
         self._retriever = SchemeRetriever(rule_base_path)
-        # Server-side session store — avoids token size overhead.
-        # Sessions live in memory for the process lifetime (acceptable for demo).
-        self._sessions: dict[str, ConversationSession] = {}
+        # Stateless sessions — all state travels in the client's session token (cookie)
+        # No server-side storage needed. This enables serverless deployments (Vercel, Lambda)
+        # and horizontal scaling without session affinity.
         # Rule base cache — loaded once per process, reused across all sessions.
         self._rule_base_cache: dict | None = None
-        # Local session persistence directory (None = in-memory only)
-        self._session_store: Path | None = session_store_path or _default_session_store()
-        if self._session_store:
-            self._session_store.mkdir(parents=True, exist_ok=True)
-            self._load_persisted_sessions()
-
-    def _default_session_dir(self) -> Path | None:
-        return _default_session_store()
-
-    def _load_persisted_sessions(self) -> None:
-        """Restore sessions from disk on startup (survivability across restarts)."""
-        if not self._session_store:
-            return
-        loaded = 0
-        for f in self._session_store.glob("*.json"):
-            try:
-                data = json.loads(f.read_text(encoding="utf-8"))
-                session = ConversationSession._from_dict(data)
-                self._sessions[session.session_id] = session
-                loaded += 1
-            except Exception as exc:
-                logger.debug("Skipping corrupt session file %s: %s", f.name, exc)
-        if loaded:
-            logger.info("Restored %d sessions from disk", loaded)
-
-    def _persist_session(self, session: ConversationSession) -> None:
-        """Write one session to disk (fire-and-forget, non-blocking intent)."""
-        if not self._session_store:
-            return
-        try:
-            path = self._session_store / f"{session.session_id}.json"
-            path.write_text(
-                json.dumps(session._to_dict(), ensure_ascii=False, default=str),
-                encoding="utf-8",
-            )
-        except Exception as exc:
-            logger.warning("Could not persist session %s: %s", session.session_id[:8], exc)
 
     # ------------------------------------------------------------------
-    # Public API
+    # Public API — Stateless Sessions
     # ------------------------------------------------------------------
 
     async def start_session(
@@ -413,7 +362,8 @@ class ConversationEngine:
     ) -> ConversationResponse:
         """Start a new conversation session.
 
-        Returns the greeting message and an initial session token.
+        Returns the greeting message and a stateless session token (cookie-safe).
+        All session state is encoded in the token; no server-side storage.
         """
         session = ConversationSession.new()
         session.detected_language = language
@@ -435,16 +385,16 @@ class ConversationEngine:
         session.add_turn(turn)
         session.transition("GATHERING")
 
-        # Store server-side; session_id is the token (no encryption needed)
-        self._sessions[session.session_id] = session
-        self._persist_session(session)
+        # Encode session state into a portable, stateless token
+        # No server-side storage — all state travels with the client
+        session_token = session.to_token()
 
         return ConversationResponse(
             text=greeting_text,
             text_en=get_template(GREETING, "en"),
             state_before="GREETING",
             state_after="GATHERING",
-            session_token=session.session_id,
+            session_token=session_token,
         )
 
     async def process_message(
@@ -455,26 +405,27 @@ class ConversationEngine:
         """Process a user message within an existing session.
 
         This is the main turn-processing pipeline:
-        1. Restore session from server-side store
+        1. Decode session from token (all state is client-side)
         2. Detect language
         3. Detect intent
         4. Route to handler
         5. Update state
         6. Generate response
-        7. Save session back to store
+        7. Encode session state back into token
 
         Raises:
             ConversationError: On unrecoverable processing error.
         """
-        # --- 1. Restore session from server-side store ---
-        session = self._sessions.get(session_token)
-        if session is None:
-            # Unknown or expired session — start fresh
+        # --- 1. Decode session from stateless token ---
+        try:
+            session = ConversationSession.from_token(session_token)
+        except Exception as exc:
+            # Token is invalid or expired; start fresh
+            logger.debug("Failed to decode session token: %s", exc)
             return await self.start_session()
 
         if session.current_state == "ENDED":
             lang = session.detected_language
-            del self._sessions[session_token]
             return await self.start_session(lang)
 
         # --- 2. Validate input ---
@@ -538,9 +489,8 @@ class ConversationEngine:
         )
         session.add_turn(turn)
 
-        # --- 8. Save session and return (persisted to disk + in-memory) ---
-        self._sessions[session.session_id] = session
-        self._persist_session(session)
+        # --- 8. Encode session state back into stateless token ---
+        session_token = session.to_token()
 
         return ConversationResponse(
             text=response_text,
@@ -550,7 +500,7 @@ class ConversationEngine:
             extractions=extraction_data.get("extractions", []),
             profile_changes=[asdict(pc) for pc in profile_changes],
             matching_triggered=extraction_data.get("matching_triggered", False),
-            session_token=session.session_id,
+            session_token=session_token,
             turn_audit=extraction_data.get("turn_audit", {}),
         )
 
@@ -562,8 +512,10 @@ class ConversationEngine:
 
         Returns a welcome-back message with current state summary.
         """
-        session = self._sessions.get(session_token)
-        if session is None:
+        try:
+            session = ConversationSession.from_token(session_token)
+        except Exception:
+            # Invalid or expired token
             return await self.start_session()
 
         lang = session.detected_language
@@ -581,12 +533,15 @@ class ConversationEngine:
             except Exception:
                 pass
 
+        # Encode updated session back into token
+        updated_token = session.to_token()
+
         return ConversationResponse(
             text=summary,
             text_en=summary,
             state_before=state,
             state_after=state,
-            session_token=session.session_id,
+            session_token=updated_token,
         )
 
     # ------------------------------------------------------------------
