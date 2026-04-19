@@ -507,16 +507,25 @@ class ConversationEngine:
     async def resume_session(
         self,
         session_token: str,
+        language: str | None = None,
     ) -> ConversationResponse:
         """Resume a session from an existing token.
 
         Returns a welcome-back message with current state summary.
+        
+        Args:
+            session_token: The encoded session token
+            language: Optional language override; if provided, updates session language
         """
         try:
             session = ConversationSession.from_token(session_token)
         except Exception:
             # Invalid or expired token
-            return await self.start_session()
+            return await self.start_session(language=language or DEFAULT_LANGUAGE)
+
+        # Apply language override if provided
+        if language and language in ("en", "hi", "hinglish"):
+            session.detected_language = language
 
         lang = session.detected_language
         populated = len(session.get_populated_field_paths())

@@ -291,7 +291,7 @@ async def _on_shutdown() -> None:
 # Inline HTML — warm, citizen-friendly, bilingual
 # ---------------------------------------------------------------------------
 
-_CHAT_HTML = """\
+_CHAT_HTML = r"""\
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -3084,9 +3084,10 @@ async def websocket_chat(websocket: WebSocket) -> None:
                         from src.conversation.session import ConversationSession
                         sess = ConversationSession.from_token(existing_token)
                         if sess.current_state != "ENDED":
-                            sess.detected_language = language
-                            # Use resume_session to get welcome message + fresh token
-                            response = await _engine.resume_session(existing_token)
+                            # Use resume_session with language override if provided
+                            response = await _engine.resume_session(
+                                existing_token, language=language
+                            )
                             is_resume = True
                         else:
                             # Session ended, start fresh
