@@ -273,16 +273,24 @@ if _static_dir.exists():
 # Mount public directory for HTML files (ambiguity maps, report, etc.)
 # Try multiple paths since Vercel's file layout varies
 _public_dir = None
-for _candidate in [
-    Path(__file__).resolve().parent.parent.parent / "public",  # src/public/
-    Path(__file__).resolve().parent.parent.parent.parent / "public",  # project root public/
-    Path.cwd() / "public",
-    Path("/var/task/src/public"),
-    Path("/var/task/public"),
-]:
-    if _candidate.exists():
-        _public_dir = _candidate
-        break
+try:
+    from src.public import PUBLIC_DIR as _pkg_public_dir
+    if _pkg_public_dir.exists():
+        _public_dir = _pkg_public_dir
+        logger.info("Public dir resolved via package import: %s", _public_dir)
+except ImportError:
+    pass
+if _public_dir is None:
+    for _candidate in [
+        Path(__file__).resolve().parent.parent.parent / "public",  # src/public/
+        Path(__file__).resolve().parent.parent.parent.parent / "public",  # project root public/
+        Path.cwd() / "public",
+        Path("/var/task/src/public"),
+        Path("/var/task/public"),
+    ]:
+        if _candidate.exists():
+            _public_dir = _candidate
+            break
 if _public_dir is None:
     _public_dir = Path("/var/task/public")  # fallback
 logger.info("Public dir resolved to: %s (exists=%s)", _public_dir, _public_dir.exists())
