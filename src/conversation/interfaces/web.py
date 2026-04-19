@@ -1678,7 +1678,7 @@ _CHAT_HTML = r"""\
     }
 
     /* ── Quick reply chips ──────────────────────────────────────────────── */
-    const QUICK_EN = ['Tell me about PM Kisan','What is MGNREGA?','Check my eligibility','I don\\'t know my income','Skip this question'];
+    const QUICK_EN = ["Tell me about PM Kisan","What is MGNREGA?","Check my eligibility","I don't know my income","Skip this question"];
     const QUICK_HI = ['पीएम किसान के बारे में बताएं','मनरेगा क्या है?','मेरी पात्रता जांचें','आय नहीं पता','यह छोड़ें'];
     function showQuickReplies(items) {
         quickReplies.innerHTML = '';
