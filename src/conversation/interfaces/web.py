@@ -280,8 +280,8 @@ try:
         _PUBLIC_FILES[_fname] = _fdata
         _PUBLIC_TYPES_MAP[_fname] = _fctype
         logger.info("Loaded embedded public file: %s (%d bytes)", _fname, len(_fdata))
-except ImportError:
-    logger.warning("Could not import embedded public files, falling back to disk")
+except (ImportError, Exception) as _emb_err:
+    logger.warning("Could not import embedded public files (%s), falling back to disk", _emb_err)
     _public_dir = None
     for _candidate in [
         Path(__file__).resolve().parent.parent.parent / "public",
