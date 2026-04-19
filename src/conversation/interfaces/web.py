@@ -1641,9 +1641,6 @@ _CHAT_HTML = r"""<!DOCTYPE html>
         userInput.placeholder = l === 'hi'
             ? 'अपने बारे में बताएं… (जैसे मैं 42 साल का किसान हूँ, UP से)'
             : 'Tell me about yourself… (e.g. I am 42 years old, farmer from UP)';
-        if (ws && ws.readyState === WebSocket.OPEN && sessionToken) {
-            ws.send(JSON.stringify({ action: 'set_language', language: l, token: sessionToken }));
-        }
         localStorage.setItem('cbc_lang_pref', l);
     }
 
@@ -2624,9 +2621,8 @@ _CHAT_HTML = r"""<!DOCTYPE html>
         if (currentResult) switchTab(currentTab);
     }
 
-    /* ── WebSocket / HTTP ───────────────────────────────────────────────── */
-    let httpOnly = false;  // Once true, never attempt WebSocket again
-    let httpStarted = false;  // Prevent duplicate startHTTP calls
+    /* ── HTTP communication ────────────────────────────────────────────── */
+    let ws = null;
     function handleResponse(data) {
         const tid = turnCount++;
         hideTyping();
@@ -2702,47 +2698,6 @@ _CHAT_HTML = r"""<!DOCTYPE html>
         }
     }
 
-    function connectWebSocket() {
-        if (httpOnly) return;  // Already switched to HTTP — don't retry WS
-        const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        ws = new WebSocket(`${proto}//${location.host}/ws/chat`);
-        ws.onopen = () => {
-            setStatus(true);
-            // Send existing token (if any) so the server can restore the session
-            ws.send(JSON.stringify({ action: 'start', language: currentLang, token: sessionToken }));
-        };
-        ws.onmessage = (e) => {
-            try {
-                const data = JSON.parse(e.data);
-                if (data.ack) return;
-                // Quick thinking hint — update typing indicator without hiding it
-                if (data.type === 'thinking') {
-                    const el = document.getElementById('typing-status');
-                    if (el) el.textContent = data.text;
-                    return;
-                }
-                handleResponse(data);
-            }
-            catch (err) {
-                hideTyping(); sendBtn.disabled = false;
-                addMessage('Something went wrong processing the response. Please try again.', 'error');
-                console.error('WS parse error', err);
-            }
-        };
-        ws.onerror = () => {
-            setStatus(false);
-            ws = null;
-            httpOnly = true;  // WS not available — switch to HTTP permanently
-            if (!httpStarted) { httpStarted = true; startHTTP(); }
-        };
-        ws.onclose  = () => {
-            ws = null;
-            setStatus(false);
-            // Don't reconnect if we've already switched to HTTP mode
-            if (httpOnly) return;
-        };
-    }
-
     async function startHTTP() {
         try {
             const r = await fetch('/api/chat', {
@@ -2772,20 +2727,16 @@ _CHAT_HTML = r"""<!DOCTYPE html>
         sendBtn.disabled = true;
         const isMatchingMsg = _isMatchingHint(text);
         showTyping(isMatchingMsg);
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ action: 'message', message: text, token: sessionToken, language: lang }));
-        } else {
-            try {
-                const r = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text, session_token: sessionToken, language: lang }),
-                });
-                handleResponse(await r.json());
-            } catch {
-                hideTyping(); sendBtn.disabled = false;
-                addMessage('Could not reach the server. Please try again.', 'error');
-            }
+        try {
+            const r = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text, session_token: sessionToken, language: lang }),
+            });
+            handleResponse(await r.json());
+        } catch {
+            hideTyping(); sendBtn.disabled = false;
+            addMessage('Could not reach the server. Please try again.', 'error');
         }
     }
 
@@ -2797,10 +2748,6 @@ _CHAT_HTML = r"""<!DOCTYPE html>
         quickReplies.innerHTML = '';
         // Auto-detect language from typed text; pass directly to server with the message
         const detectedLang = _autoDetectLang(text);
-        // Update session language on server if different from current UI pref
-        if (detectedLang !== currentLang && ws && ws.readyState === WebSocket.OPEN && sessionToken) {
-            ws.send(JSON.stringify({ action: 'set_language', language: detectedLang, token: sessionToken }));
-        }
         await sendText(text, detectedLang);
     }
 
@@ -2815,9 +2762,9 @@ _CHAT_HTML = r"""<!DOCTYPE html>
     sendBtn.addEventListener('click', sendMessage);
 
     /* ── Init ─────────────────────────────────────────────────────────── */
-    setStatus(false);
+    setStatus(true);
     showWelcomeCard();
-    connectWebSocket();
+    startHTTP();
     // Apply stored lang pref to UI
     setLang(currentLang);
     // Init applied schemes button visibility

@@ -540,10 +540,7 @@ async def extract_fields(
 ) -> ExtractionResult:
     """Extract structured profile fields from a user message.
 
-    Uses LLM structured output wherever possible.  Falls back to a
-    deterministic regex extractor when both Gemini and OpenRouter are
-    rate-limited, so the full pipeline (NER guard, contradiction detection,
-    turn_audit) continues to work during development.
+    Uses LLM structured output (Gemini with OpenRouter fallback).
 
     Args:
         message: Raw user message (any language).
@@ -614,25 +611,15 @@ async def extract_fields(
     if context_lines:
         full_message = "\n".join(context_lines) + "\n\nUser message: " + normalised_message
 
-    # ── Try LLM first, fall back to regex on rate-limit ────────────────────
-    raw: dict[str, Any] | None = None
-    used_fallback = False
+    # ── LLM extraction (no regex fallback) ────────────────────────────────
+    raw: dict[str, Any] = {}
     try:
         raw = await _call_gemini(EXTRACTION_SYSTEM_PROMPT, full_message)
     except LLMUnavailableError as exc:
-        logger.warning("LLM unavailable (%s) — using regex fallback extractor", exc)
-        used_fallback = True
-        raw = _extract_fields_regex(normalised_message, existing_profile)
+        logger.warning("LLM unavailable (%s) — returning empty extraction", exc)
+        return ExtractionResult(detected_language=language)
 
-    # If LLM returned but extracted nothing, supplement with regex
-    if not used_fallback and raw and not raw.get("extractions"):
-        regex_raw = _extract_fields_regex(normalised_message, existing_profile)
-        if regex_raw.get("extractions"):
-            logger.info("LLM returned empty extractions — supplementing with regex fallback")
-            raw = regex_raw
-            used_fallback = True
-
-    # Parse LLM/regex response into ExtractedField objects
+    # Parse LLM response into ExtractedField objects
     extractions: list[ExtractedField] = []
     reasoning_chain: list[ExtractionReasoning] = []
 
@@ -670,7 +657,7 @@ async def extract_fields(
                 value=normalised,
                 raw_value=str(raw_val),
                 confidence=confidence,
-                reasoning_note=reasoning + (" [regex fallback]" if used_fallback else ""),
+                reasoning_note=reasoning,
             )
         )
 
@@ -690,323 +677,6 @@ async def extract_fields(
         reasoning_chain=reasoning_chain,
         suggested_followups=suggested,
     )
-
-
-# ---------------------------------------------------------------------------
-# Regex-based extraction fallback (LLM-free, dev-resilient)
-# ---------------------------------------------------------------------------
-
-# State name → abbreviation table
-_STATE_NAME_TO_CODE: dict[str, str] = {
-    "andhra pradesh": "AP", "arunachal pradesh": "AR", "assam": "AS",
-    "bihar": "BR", "chhattisgarh": "CG", "goa": "GA", "gujarat": "GJ",
-    "haryana": "HR", "himachal pradesh": "HP", "jharkhand": "JH",
-    "karnataka": "KA", "kerala": "KL", "madhya pradesh": "MP",
-    "maharashtra": "MH", "manipur": "MN", "meghalaya": "ML",
-    "mizoram": "MZ", "nagaland": "NL", "odisha": "OR", "punjab": "PB",
-    "rajasthan": "RJ", "sikkim": "SK", "tamil nadu": "TN", "telangana": "TG",
-    "tripura": "TR", "uttar pradesh": "UP", "uttarakhand": "UK",
-    "west bengal": "WB", "delhi": "DL", "jammu and kashmir": "JK",
-    "ladakh": "LA", "chandigarh": "CH", "puducherry": "PY",
-    # Common abbreviations people use
-    "up": "UP", "mp": "MP", "hp": "HP", "uk": "UK", "wb": "WB",
-    "ap": "AP", "tn": "TN", "mh": "MH", "gj": "GJ", "rj": "RJ",
-    "br": "BR", "hr": "HR", "ka": "KA", "kl": "KL", "or": "OR",
-    "pb": "PB", "dl": "DL", "jh": "JH", "cg": "CG", "tg": "TG",
-}
-
-_CASTE_MAP: dict[str, str] = {
-    "sc": "SC", "scheduled caste": "SC", "dalit": "SC",
-    "st": "ST", "scheduled tribe": "ST", "adivasi": "ST", "tribal": "ST",
-    "obc": "OBC", "other backward class": "OBC", "backward class": "OBC",
-    "general": "GENERAL", "gen": "GENERAL", "open category": "GENERAL",
-    "ews": "EWS", "economically weaker section": "EWS",
-}
-
-_OCCUPATION_MAP: dict[str, str] = {
-    "farmer": "agriculture", "kisan": "agriculture", "kisaan": "agriculture",
-    "farming": "agriculture", "agriculture": "agriculture", "किसान": "agriculture",
-    "daily wage": "daily_wage", "daily wager": "daily_wage", "labourer": "daily_wage",
-    "labor": "daily_wage", "labour": "daily_wage", "mazdoor": "daily_wage",
-    "salaried": "salaried", "government job": "salaried", "private job": "salaried",
-    "office job": "salaried", "naukri": "salaried",
-    "self employed": "self_employed", "business": "self_employed",
-    "unemployed": "unemployed", "no job": "unemployed", "without job": "unemployed",
-    "student": "student", "studying": "student", "पढ़ाई": "student",
-    "retired": "retired", "pensioner": "retired",
-    "homemaker": "homemaker", "housewife": "homemaker", "househusband": "homemaker",
-}
-
-
-def _parse_number_indian(text: str) -> float | None:
-    """Parse Indian number formats: 1.5 lakh, 2 crore, 15,000, 15000, 1L."""
-    text = text.replace(",", "").strip()
-    m = re.search(
-        r"([\d.]+)\s*(lakh|lac|crore|cr|thousand|k|l)\b",
-        text, re.IGNORECASE
-    )
-    if not m:
-        # Try bare number
-        m = re.search(r"([\d.]+)", text)
-        if not m:
-            return None
-        return float(m.group(1))
-    num = float(m.group(1))
-    unit = (m.group(2) or "").lower()
-    if unit in ("lakh", "lac", "l"):
-        num *= 100_000
-    elif unit in ("crore", "cr"):
-        num *= 10_000_000
-    elif unit in ("thousand", "k"):
-        num *= 1_000
-    return num
-
-
-def _extract_fields_regex(
-    message: str,
-    existing_profile: dict[str, Any],
-) -> dict[str, Any]:
-    """Deterministic regex-based field extractor.
-
-    Returns a dict in the same shape as the LLM JSON response so that
-    the ``extract_fields`` caller can treat it identically.
-    """
-    # ── Pre-process: expand Hindi number words (Hinglish) ──────────────────
-    _HINDI_NUMS: dict[str, int] = {
-        "ek": 1, "do": 2, "teen": 3, "chaar": 4, "char": 4,
-        "paanch": 5, "panch": 5, "chhah": 6, "chheh": 6, "chhah": 6,
-        "saat": 7, "sat": 7, "aath": 8, "ath": 8, "nau": 9, "naw": 9,
-        "das": 10, "gyarah": 11, "barah": 12, "baara": 12, "bara": 12,
-        "terah": 13, "chaudah": 14, "pandrah": 15, "solah": 16,
-        "satrah": 17, "atharah": 18, "unnees": 19, "bees": 20,
-        "ikees": 21, "battees": 32, "chalees": 40, "pachaas": 50,
-        "saath": 60, "sattar": 70, "assi": 80, "nabbe": 90,
-    }
-    text_normalized = message.lower().strip()
-    # Replace "X saal" / "X sal" / "X years" with numeric forms
-    def _replace_hindi_num(m: re.Match) -> str:
-        word = m.group(1)
-        num = _HINDI_NUMS.get(word)
-        return str(num) + " " + m.group(2) if num else m.group(0)
-    text_normalized = re.sub(
-        r"\b(" + "|".join(re.escape(k) for k in _HINDI_NUMS) + r")\s+(saal|sal|sal\b|years?|mahine|members?|hazar|lakh|lac)\b",
-        _replace_hindi_num,
-        text_normalized
-    )
-    # Also handle "X hazar" → X*1000 and "X lakh"/"X lac" for income
-    def _expand_hindi_amount(m: re.Match) -> str:
-        word = m.group(1)
-        unit = m.group(2)
-        num = _HINDI_NUMS.get(word)
-        if num is None:
-            return m.group(0)
-        if unit in ("hazar", "hazaar"):
-            return str(num * 1000)
-        if unit in ("lakh", "lac"):
-            return str(num * 100000)
-        return m.group(0)
-    text_normalized = re.sub(
-        r"\b(" + "|".join(re.escape(k) for k in _HINDI_NUMS) + r")\s+(hazar|hazaar|lakh|lac)\b",
-        _expand_hindi_amount,
-        text_normalized
-    )
-    text = text_normalized
-    extractions: list[dict[str, Any]] = []
-
-    def add(field_path: str, value: Any, raw: str, confidence: str = "HIGH",
-            reasoning: str = "") -> None:
-        if field_path not in existing_profile:
-            extractions.append({
-                "field_path": field_path,
-                "value": value,
-                "raw_value": raw,
-                "confidence": confidence,
-                "reasoning": reasoning or f"regex: matched '{raw}' → {field_path}",
-            })
-
-    # ── Age ────────────────────────────────────────────────────────────────
-    age_m = re.search(
-        r"\b(\d{1,3})\s*(?:years?\s*old|yr\s*old|वर्ष|साल|saal|sal)\b"
-        r"|(?:age(?:d)?|उम्र)\s+(?:is\s+)?(\d{1,3})"
-        r"|\bam\s+(\d{1,3})\b"
-        r"|\bhu\s+(\d{1,3})\b",
-        text
-    )
-    if age_m:
-        age_val = next(v for v in age_m.groups() if v)
-        add("applicant.age", int(age_val), age_m.group(), reasoning=f"age pattern: {age_m.group()}")
-
-    # ── Birth year ─────────────────────────────────────────────────────────
-    year_m = re.search(r"\b(19[4-9]\d|20[0-2]\d)\b", text)
-    if year_m and "applicant.birth_year" not in existing_profile:
-        add("applicant.birth_year", int(year_m.group()), year_m.group())
-
-    # ── Caste ──────────────────────────────────────────────────────────────
-    for trigger, code in _CASTE_MAP.items():
-        if re.search(r"\b" + re.escape(trigger) + r"\b", text):
-            add("applicant.caste_category", code, trigger)
-            break
-
-    # ── Gender ─────────────────────────────────────────────────────────────
-    if re.search(r"\b(?:i am a |i'?m a )?(?:woman|female|lady|महिला|aurat)\b", text):
-        add("applicant.gender", "female", "female/woman")
-    elif re.search(r"\b(?:i am a |i'?m a )?(?:man|male|पुरुष|aadmi)\b", text):
-        add("applicant.gender", "male", "male/man")
-    elif re.search(r"\bwidow\b", text):
-        add("applicant.gender", "female", "widow (inferred)")
-    elif re.search(r"\bwidower\b", text):
-        add("applicant.gender", "male", "widower (inferred)")
-
-    # ── Marital status ─────────────────────────────────────────────────────
-    if re.search(r"\b(?:married|wife|husband|spouse)\b", text):
-        add("applicant.marital_status", "married", "married")
-    elif re.search(r"\b(?:widow(?:er)?|विधवा|विधुर)\b", text):
-        add("applicant.marital_status", "widowed", "widow/widower")
-    elif re.search(r"\b(?:single|unmarried|bachelor)\b", text):
-        add("applicant.marital_status", "single", "single")
-    elif re.search(r"\b(?:divorced|separated)\b", text):
-        add("applicant.marital_status", "divorced", "divorced")
-
-    # ── State ──────────────────────────────────────────────────────────────
-    state_found = False
-    # Also check for "X se" / "from X" / "in X" patterns (Hinglish)
-    for name, code in sorted(_STATE_NAME_TO_CODE.items(), key=lambda x: -len(x[0])):
-        pattern = r"\b" + re.escape(name) + r"(?:\s+se\b|\s+mein\b|\b)"
-        if re.search(pattern, text):
-            add("location.state", code, name)
-            state_found = True
-            break
-
-    # ── District / city — store as location.district if mentioned ─────────
-    dist_m = re.search(r"(?:from|in|district)\s+([a-z][a-z\s]{2,20}?)(?:\s*,|\s+district|\s+city|\s+\bup\b|\s+\bwb\b|$)", text)
-    if dist_m and not state_found:
-        pass  # skip city extraction for now to avoid false positives
-
-    # ── Income ─────────────────────────────────────────────────────────────
-    # Monthly income
-    monthly_m = re.search(
-        r"([\d.,]+\s*(?:lakh|lac|k|thousand)?)\s*(?:per|a|every|/)\s*month",
-        text, re.IGNORECASE
-    )
-    if monthly_m:
-        val = _parse_number_indian(monthly_m.group(1))
-        if val:
-            add("household.income_monthly", val, monthly_m.group())
-
-    # Annual income
-    annual_m = re.search(
-        r"([\d.,]+\s*(?:lakh|lac|crore|cr|k|thousand)?)\s*(?:per|a|every|/)?\s*(?:year|annum|annual|pa)\b"
-        r"|(?:annual|yearly)\s+income\s+(?:is\s+)?([\d.,]+\s*(?:lakh|lac|crore|cr)?)",
-        text, re.IGNORECASE
-    )
-    if annual_m:
-        raw_num = annual_m.group(1) or annual_m.group(2)
-        if raw_num:
-            val = _parse_number_indian(raw_num)
-            if val:
-                add("household.income_annual", val, annual_m.group())
-
-    # Bare income amount (no time unit) — treat as annual if no monthly found
-    if not monthly_m and not annual_m:
-        bare_m = re.search(
-            r"(?:earn(?:ing)?|income|salary|maalik|kamai|kamate|kamata|आमदनी|कमाई|तनख्वाह)\s+(?:of\s+|is\s+|h\b|hai\b)?\s*"
-            r"([\d.,]+\s*(?:lakh|lac|crore|cr|k|l|thousand)?)",
-            text, re.IGNORECASE
-        )
-        if not bare_m:
-            # "1 lac kamate h saal mai" → income comes before verb
-            bare_m = re.search(
-                r"([\d.,]+\s*(?:lakh|lac|crore|cr|k|l)?)\s+(?:kamate|kamata|kamai|earn)",
-                text, re.IGNORECASE
-            )
-        if not bare_m:
-            # "1L saal ka" / "1l ka" — bare amount with lakh shorthand
-            bare_m = re.search(
-                r"\b([\d.,]+\s*(?:lakh|lac|l|crore|cr|k))\b",
-                text, re.IGNORECASE
-            )
-        if bare_m:
-            val = _parse_number_indian(bare_m.group(1))
-            if val:
-                # Heuristic: < 25000 → likely monthly
-                if val < 25_000:
-                    add("household.income_monthly", val, bare_m.group(), confidence="MEDIUM",
-                        reasoning="bare amount <25k assumed monthly")
-                else:
-                    add("household.income_annual", val, bare_m.group(), confidence="MEDIUM",
-                        reasoning="bare amount ≥25k assumed annual")
-
-    # ── Occupation ─────────────────────────────────────────────────────────
-    for trigger, occ in _OCCUPATION_MAP.items():
-        if re.search(r"\b" + re.escape(trigger) + r"\b", text):
-            add("employment.type", occ, trigger)
-            break
-
-    # ── Disability ─────────────────────────────────────────────────────────
-    dis_m = re.search(r"\b(\d{1,3})\s*%?\s*disab(?:ility|led)\b", text)
-    if dis_m:
-        add("applicant.disability_percentage", int(dis_m.group(1)), dis_m.group())
-        add("applicant.disability_status", True, dis_m.group())
-    elif re.search(r"\bdisab(?:ility|led|ility)\b", text):
-        add("applicant.disability_status", True, "disabled")
-    elif re.search(r"\b(?:no disability|not disabled)\b", text):
-        add("applicant.disability_status", False, "no disability")
-
-    # ── BPL ────────────────────────────────────────────────────────────────
-    if re.search(r"\bbpl\b|below poverty line", text):
-        add("household.bpl_status", True, "BPL")
-    elif re.search(r"\bapl\b|above poverty line", text):
-        add("household.bpl_status", False, "APL")
-
-    # ── Land ───────────────────────────────────────────────────────────────
-    land_m = re.search(
-        r"([\d.]+)\s*(?:acres?|bigha|hectares?|bia)\b"
-        r"|(\d+)\s*acres?\s+(?:of\s+)?land",
-        text, re.IGNORECASE
-    )
-    if land_m:
-        raw_num = land_m.group(1) or land_m.group(2)
-        add("household.land_acres", float(raw_num), land_m.group())
-        add("applicant.land_ownership_status", True, land_m.group())
-    elif re.search(r"\b(?:own|have|possess)\s+(?:some\s+)?land\b|land\s*owner", text):
-        add("applicant.land_ownership_status", True, "own land")
-    elif re.search(r"\bno\s+land\b|landless\b", text):
-        add("applicant.land_ownership_status", False, "no land")
-
-    # ── Family size ────────────────────────────────────────────────────────
-    fam_m = re.search(
-        r"family\s+of\s+(\d+)"
-        r"|(\d+)\s+(?:members?|people|persons?)\s+(?:in\s+)?(?:my\s+)?family",
-        text, re.IGNORECASE
-    )
-    if fam_m:
-        val = fam_m.group(1) or fam_m.group(2)
-        add("household.size", int(val), fam_m.group())
-
-    # ── Documents ──────────────────────────────────────────────────────────
-    if re.search(r"\b(?:have|have a|has)\s+(?:an?\s+)?aadhaar\b|aadhaar\s+(?:card|number)\b"
-                 r"|mere\s+paas\s+aadhaar\b|mere\s+paas\s+aadhaar\b", text, re.IGNORECASE):
-        add("documents.aadhaar", True, "have Aadhaar")
-    elif re.search(r"\bno\s+aadhaar\b|without\s+aadhaar\b|aadhaar\s+nahi\b", text, re.IGNORECASE):
-        add("documents.aadhaar", False, "no Aadhaar")
-    elif re.search(r"\baadhaar\b", text, re.IGNORECASE):
-        # Standalone "Aadhaar" in a document list (e.g., "Aadhaar and bank account")
-        add("documents.aadhaar", True, "Aadhaar")
-
-    if re.search(r"\bbank\s+account\b", text):
-        has_account = not re.search(r"\bno\s+bank|don'?t\s+have\s+.*bank|without\s+bank", text)
-        add("documents.bank_account", has_account, "bank account")
-
-    # Detect language
-    hi_chars = len(re.findall(r"[\u0900-\u097F]", message))
-    detected = "hi" if hi_chars > 3 else ("hinglish" if hi_chars > 0 else "en")
-
-    return {
-        "extractions": extractions,
-        "detected_language": detected,
-        "unprocessed_text": "",
-    }
-
 
 
 def format_extraction_summary(
