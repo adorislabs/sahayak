@@ -275,7 +275,7 @@ if _static_dir.exists():
 _PUBLIC_FILES: dict[str, bytes] = {}
 _PUBLIC_TYPES_MAP: dict[str, str] = {}
 try:
-    from src.public import FILES as _embedded_files
+    from src.conversation.interfaces._public_data import FILES as _embedded_files
     for _fname, (_fdata, _fctype) in _embedded_files.items():
         _PUBLIC_FILES[_fname] = _fdata
         _PUBLIC_TYPES_MAP[_fname] = _fctype
