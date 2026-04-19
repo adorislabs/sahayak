@@ -52,11 +52,9 @@ see `.env.example`
 
 ## maps
 
-- `/ambiguity-map-global.html` — all 1,199 ambiguities
-- `/ambiguity-map-anchor-schemes.html` — 12 priority schemes
-- `/report.pdf` — technical report
+- `/ambiguity-map-global.html` — 14,797 ambiguities flagged
+- `/ambiguity-map-anchor-schemes.html` — 15 priority schemes mapped
 
-open in browser, no server needed (maps load `rules_data.js` from same dir).
 
 ## api
 
