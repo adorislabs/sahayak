@@ -270,6 +270,15 @@ _static_dir = Path(__file__).parent / "templates" / "static"
 if _static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
+# Mount public directory for HTML files (ambiguity maps, report, etc.)
+_public_dir = Path(__file__).parent.parent.parent / "public"
+if _public_dir.exists():
+    # Create a custom mount that handles both static files and the root "/" case
+    try:
+        app.mount("/public", StaticFiles(directory=str(_public_dir)), name="public-static")
+    except Exception:
+        pass
+
 
 # ---------------------------------------------------------------------------
 # Startup/shutdown events — Telegram notifications
@@ -1958,7 +1967,7 @@ _CHAT_HTML = r"""\
         let banner = bannerMap[cls] || bannerMap['ineligible'];
         // If marked ELIGIBLE but no rules actually passed (low evidence), temper the banner
         if (cls === 'eligible' && passedRules === 0 && undetermined > 0) {
-            banner = { cls: 'banner-eligible', icon: '🔍', h: 'Appears eligible — verify details', p: 'You may qualify, but we couldn\\'t confirm all criteria. Review requirements before applying.' };
+            banner = { cls: 'banner-eligible', icon: '🔍', h: 'Appears eligible — verify details', p: "You may qualify, but we couldn't confirm all criteria. Review requirements before applying." };
         }
 
         // Build sections
@@ -2034,7 +2043,7 @@ _CHAT_HTML = r"""\
                       ${userVal ? `Your value: <span class="your">${esc(userVal)}</span>` : '<span style="color:var(--text-hint)">your value: unknown</span>'}
                       ${ruleVal ? ` &nbsp;·&nbsp; Required: <span class="required">${esc(ruleVal)}</span>` : ''}
                     </div>` : ''}
-                    ${undet ? '<div style="font-size:0.7rem;color:var(--warning);margin-top:0.1rem">We don\\'t have this information yet</div>' : ''}
+                    ${undet ? '<div style="font-size:0.7rem;color:var(--warning);margin-top:0.1rem">We don\'t have this information yet</div>' : ''}
                   </div>
                 </div>`;
             });
@@ -3194,3 +3203,42 @@ async def http_chat(request: Request) -> dict[str, Any]:
         "matching_triggered": response.matching_triggered,
         "turn_audit": response.turn_audit,
     }
+
+
+# Serve public HTML/PDF files at root level for backward compatibility
+@app.get("/{filename:path}", response_class=Response)
+async def serve_public_files(filename: str) -> Response:
+    """Serve HTML, PDF, and JS files from public directory."""
+    # Only allow specific files to be served from root
+    allowed_extensions = {".html", ".pdf", ".js"}
+    allowed_files = {
+        "ambiguity-map-global.html",
+        "ambiguity-map-anchor-schemes.html",
+        "report.pdf",
+        "rules_data.js",
+    }
+    
+    # Check if file is allowed
+    if filename not in allowed_files:
+        return Response(status_code=404)
+    
+    file_path = _public_dir / filename
+    if not file_path.exists() or not file_path.is_file():
+        return Response(status_code=404)
+    
+    # Determine content type
+    if filename.endswith(".html"):
+        content_type = "text/html; charset=utf-8"
+    elif filename.endswith(".pdf"):
+        content_type = "application/pdf"
+    elif filename.endswith(".js"):
+        content_type = "application/javascript"
+    else:
+        content_type = "application/octet-stream"
+    
+    try:
+        with open(file_path, "rb") as f:
+            content = f.read()
+        return Response(content=content, media_type=content_type)
+    except Exception:
+        return Response(status_code=500)
