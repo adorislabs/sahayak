@@ -271,19 +271,21 @@ if _static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
 # Mount public directory for HTML files (ambiguity maps, report, etc.)
-# Try multiple paths since Vercel's file layout varies
-_public_dir = None
+# Try embedded Python data first (works on Vercel), then fall back to disk
+_PUBLIC_FILES: dict[str, bytes] = {}
+_PUBLIC_TYPES_MAP: dict[str, str] = {}
 try:
-    from src.public import PUBLIC_DIR as _pkg_public_dir
-    if _pkg_public_dir.exists():
-        _public_dir = _pkg_public_dir
-        logger.info("Public dir resolved via package import: %s", _public_dir)
+    from src.public import FILES as _embedded_files
+    for _fname, (_fdata, _fctype) in _embedded_files.items():
+        _PUBLIC_FILES[_fname] = _fdata
+        _PUBLIC_TYPES_MAP[_fname] = _fctype
+        logger.info("Loaded embedded public file: %s (%d bytes)", _fname, len(_fdata))
 except ImportError:
-    pass
-if _public_dir is None:
+    logger.warning("Could not import embedded public files, falling back to disk")
+    _public_dir = None
     for _candidate in [
-        Path(__file__).resolve().parent.parent.parent / "public",  # src/public/
-        Path(__file__).resolve().parent.parent.parent.parent / "public",  # project root public/
+        Path(__file__).resolve().parent.parent.parent / "public",
+        Path(__file__).resolve().parent.parent.parent.parent / "public",
         Path.cwd() / "public",
         Path("/var/task/src/public"),
         Path("/var/task/public"),
@@ -291,31 +293,23 @@ if _public_dir is None:
         if _candidate.exists():
             _public_dir = _candidate
             break
-if _public_dir is None:
-    _public_dir = Path("/var/task/public")  # fallback
-logger.info("Public dir resolved to: %s (exists=%s)", _public_dir, _public_dir.exists())
-
-# Pre-load public files into memory for reliable serving on Vercel
-_PUBLIC_FILES: dict[str, bytes] = {}
-_PUBLIC_TYPES: dict[str, str] = {
-    ".html": "text/html; charset=utf-8",
-    ".pdf": "application/pdf",
-    ".js": "application/javascript",
-}
-if _public_dir.exists():
-    for _pf in _public_dir.iterdir():
-        if _pf.is_file() and _pf.suffix in _PUBLIC_TYPES:
-            try:
-                _PUBLIC_FILES[_pf.name] = _pf.read_bytes()
-                logger.info("Loaded public file: %s (%d bytes)", _pf.name, len(_PUBLIC_FILES[_pf.name]))
-            except Exception as e:
-                logger.warning("Failed to load public file %s: %s", _pf.name, e)
-    try:
-        app.mount("/public", StaticFiles(directory=str(_public_dir)), name="public-static")
-    except Exception:
-        pass
-else:
-    logger.warning("Public dir NOT found. Tried all candidate paths.")
+    if _public_dir is None:
+        _public_dir = Path("/var/task/public")
+    logger.info("Public dir resolved to: %s (exists=%s)", _public_dir, _public_dir.exists())
+    _PUBLIC_DISK_TYPES: dict[str, str] = {
+        ".html": "text/html; charset=utf-8",
+        ".pdf": "application/pdf",
+        ".js": "application/javascript",
+    }
+    if _public_dir.exists():
+        for _pf in _public_dir.iterdir():
+            if _pf.is_file() and _pf.suffix in _PUBLIC_DISK_TYPES:
+                try:
+                    _PUBLIC_FILES[_pf.name] = _pf.read_bytes()
+                    _PUBLIC_TYPES_MAP[_pf.name] = _PUBLIC_DISK_TYPES[_pf.suffix]
+                    logger.info("Loaded public file: %s (%d bytes)", _pf.name, len(_PUBLIC_FILES[_pf.name]))
+                except Exception as e:
+                    logger.warning("Failed to load public file %s: %s", _pf.name, e)
 
 
 # ---------------------------------------------------------------------------
@@ -3231,8 +3225,7 @@ async def serve_public_files(filename: str) -> Response:
     
     # Serve from memory cache (loaded at startup)
     if filename in _PUBLIC_FILES:
-        suffix = Path(filename).suffix
-        content_type = _PUBLIC_TYPES.get(suffix, "application/octet-stream")
+        content_type = _PUBLIC_TYPES_MAP.get(filename, "application/octet-stream")
         return Response(content=_PUBLIC_FILES[filename], media_type=content_type)
     
     return Response(status_code=404)
