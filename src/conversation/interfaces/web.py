@@ -270,46 +270,32 @@ _static_dir = Path(__file__).parent / "templates" / "static"
 if _static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
-# Mount public directory for HTML files (ambiguity maps, report, etc.)
-# Try embedded Python data first (works on Vercel), then fall back to disk
+# Public files (HTML, PDF, JS) are served by Vercel's static file handling.
+# For local dev, try to serve from disk as fallback.
 _PUBLIC_FILES: dict[str, bytes] = {}
 _PUBLIC_TYPES_MAP: dict[str, str] = {}
-try:
-    from src.conversation.interfaces._public_data import FILES as _embedded_files
-    for _fname, (_fdata, _fctype) in _embedded_files.items():
-        _PUBLIC_FILES[_fname] = _fdata
-        _PUBLIC_TYPES_MAP[_fname] = _fctype
-        logger.info("Loaded embedded public file: %s (%d bytes)", _fname, len(_fdata))
-except (ImportError, Exception) as _emb_err:
-    logger.warning("Could not import embedded public files (%s), falling back to disk", _emb_err)
-    _public_dir = None
-    for _candidate in [
-        Path(__file__).resolve().parent.parent.parent / "public",
-        Path(__file__).resolve().parent.parent.parent.parent / "public",
-        Path.cwd() / "public",
-        Path("/var/task/src/public"),
-        Path("/var/task/public"),
-    ]:
-        if _candidate.exists():
-            _public_dir = _candidate
-            break
-    if _public_dir is None:
-        _public_dir = Path("/var/task/public")
-    logger.info("Public dir resolved to: %s (exists=%s)", _public_dir, _public_dir.exists())
-    _PUBLIC_DISK_TYPES: dict[str, str] = {
+_public_dir = None
+for _candidate in [
+    Path(__file__).resolve().parent.parent.parent / "public",
+    Path(__file__).resolve().parent.parent.parent.parent / "public",
+    Path.cwd() / "public",
+]:
+    if _candidate.exists():
+        _public_dir = _candidate
+        break
+if _public_dir and _public_dir.exists():
+    _LOCAL_TYPES: dict[str, str] = {
         ".html": "text/html; charset=utf-8",
         ".pdf": "application/pdf",
         ".js": "application/javascript",
     }
-    if _public_dir.exists():
-        for _pf in _public_dir.iterdir():
-            if _pf.is_file() and _pf.suffix in _PUBLIC_DISK_TYPES:
-                try:
-                    _PUBLIC_FILES[_pf.name] = _pf.read_bytes()
-                    _PUBLIC_TYPES_MAP[_pf.name] = _PUBLIC_DISK_TYPES[_pf.suffix]
-                    logger.info("Loaded public file: %s (%d bytes)", _pf.name, len(_PUBLIC_FILES[_pf.name]))
-                except Exception as e:
-                    logger.warning("Failed to load public file %s: %s", _pf.name, e)
+    for _pf in _public_dir.iterdir():
+        if _pf.is_file() and _pf.suffix in _LOCAL_TYPES:
+            try:
+                _PUBLIC_FILES[_pf.name] = _pf.read_bytes()
+                _PUBLIC_TYPES_MAP[_pf.name] = _LOCAL_TYPES[_pf.suffix]
+            except Exception:
+                pass
 
 
 # ---------------------------------------------------------------------------

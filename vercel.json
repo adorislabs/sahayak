@@ -2,11 +2,14 @@
   "version": 2,
   "builds": [
     {
+      "src": "public/**",
+      "use": "@vercel/static"
+    },
+    {
       "src": "api/index.py",
       "use": "@vercel/python",
       "config": {
-        "maxLambdaSize": "50mb",
-        "includeFiles": "src/public/**"
+        "maxLambdaSize": "50mb"
       }
     }
   ],
@@ -18,6 +21,10 @@
     {
       "src": "/health",
       "dest": "/api/index.py"
+    },
+    {
+      "src": "/(ambiguity-map-anchor-schemes\\.html|ambiguity-map-global\\.html|report\\.pdf|rules_data\\.js)",
+      "dest": "/public/$1"
     },
     {
       "src": "/(.*)",
