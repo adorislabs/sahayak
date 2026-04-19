@@ -23,6 +23,10 @@
       "dest": "/api/index.py"
     },
     {
+      "src": "/(ambiguity-map-global\\.html|ambiguity-map-anchor-schemes\\.html|rules_data\\.js|report\\.pdf)",
+      "dest": "/public/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "/api/index.py"
     }
